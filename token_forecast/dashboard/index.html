@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Forecast</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <style>
+        body { background: #0f172a; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+        .badge-green { background: #065f46; color: #6ee7b7; }
+        .badge-yellow { background: #713f12; color: #fde047; }
+        .badge-red { background: #7f1d1d; color: #fca5a5; }
+        .drop-zone { border: 2px dashed #475569; transition: all 0.2s; }
+        .drop-zone.dragover { border-color: #38bdf8; background: rgba(56,189,248,0.05); }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-wrap items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Token Forecast
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">LLM cost forecasting and budget alerts</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-sm text-slate-400">Monthly Budget:</span>
+                <input id="budgetInput" type="number" placeholder="$0" min="0" step="100"
+                       class="w-28 px-3 py-1.5 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm focus:border-sky-400 focus:outline-none">
+                <button onclick="setBudget()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-sm rounded-lg transition">Set</button>
+                <span id="alertBadge" class="hidden px-3 py-1 rounded-full text-xs font-medium"></span>
+            </div>
+        </header>
+
+        <!-- Upload -->
+        <div id="uploadSection" class="card p-6 mb-6">
+            <div id="dropZone" class="drop-zone rounded-lg p-8 text-center cursor-pointer"
+                 onclick="document.getElementById('fileInput').click()">
+                <svg class="w-10 h-10 mx-auto text-slate-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <p class="text-slate-400">Drop your usage CSV here, or <span class="text-sky-400 underline">click to browse</span></p>
+                <p class="text-xs text-slate-500 mt-2">Supports OpenAI, Anthropic, and generic CSV formats</p>
+            </div>
+            <input id="fileInput" type="file" accept=".csv" class="hidden" onchange="uploadFile(this.files[0])">
+            <div id="uploadStatus" class="hidden mt-3 text-sm"></div>
+        </div>
+
+        <!-- Chart -->
+        <div class="card p-4 mb-6">
+            <div id="chart" style="height: 380px;"></div>
+            <p id="chartEmpty" class="text-center text-slate-500 py-16">Upload usage data to see your cost forecast</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div class="card p-4"><p class="text-xs text-slate-400">Total Spend</p><p id="statTotal" class="text-xl font-bold text-white mt-1">-</p></div>
+            <div class="card p-4"><p class="text-xs text-slate-400">Avg Daily</p><p id="statAvg" class="text-xl font-bold text-white mt-1">-</p></div>
+            <div class="card p-4"><p class="text-xs text-slate-400">Projected Monthly</p><p id="statProjected" class="text-xl font-bold text-white mt-1">-</p></div>
+            <div class="card p-4"><p class="text-xs text-slate-400">Days Until Exceeded</p><p id="statDays" class="text-xl font-bold text-white mt-1">-</p></div>
+            <div class="card p-4"><p class="text-xs text-slate-400">Top Model</p><p id="statTopModel" class="text-sm font-bold text-white mt-1">-</p></div>
+        </div>
+
+        <!-- Usage Table -->
+        <div class="card p-4">
+            <h3 class="text-lg font-semibold text-white mb-3">Recent Usage</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-slate-400 border-b border-slate-700">
+                        <tr><th class="py-2 pr-4">Date</th><th class="pr-4">Model</th><th class="pr-4">Provider</th><th class="pr-4 text-right">Tokens</th><th class="pr-4 text-right">Cost</th><th class="text-right">Requests</th></tr>
+                    </thead>
+                    <tbody id="usageTable" class="text-slate-300"></tbody>
+                </table>
+            </div>
+            <p id="tableEmpty" class="text-center text-slate-500 py-4">No data</p>
+        </div>
+    </div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// Drag and drop
+const dz = $('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]); });
+
+async function uploadFile(file) {
+    if (!file) return;
+    const status = $('uploadStatus');
+    status.classList.remove('hidden');
+    status.innerHTML = '<span class="text-sky-400">Uploading...</span>';
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        const res = await fetch('/api/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) { status.innerHTML = `<span class="text-red-400">${data.detail}</span>`; return; }
+        status.innerHTML = `<span class="text-green-400">Imported ${data.records_imported} records (${data.date_range_start} to ${data.date_range_end}). Total: $${data.total_cost.toLocaleString()}</span>`;
+        loadAll();
+    } catch (e) { status.innerHTML = `<span class="text-red-400">Error: ${e.message}</span>`; }
+}
+
+async function setBudget() {
+    const amount = parseFloat($('budgetInput').value) || 0;
+    await fetch('/api/budget', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) });
+    loadForecast();
+}
+
+async function loadForecast() {
+    try {
+        const res = await fetch('/api/forecast');
+        if (!res.ok) return;
+        const data = await res.json();
+        renderChart(data.historical, data.forecast, data.alert.budget);
+        renderAlert(data.alert);
+    } catch (e) { /* no data yet */ }
+}
+
+async function loadSummary() {
+    try {
+        const res = await fetch('/api/summary');
+        const s = await res.json();
+        $('statTotal').textContent = `$${s.total_cost.toLocaleString()}`;
+        $('statAvg').textContent = `$${s.avg_daily_cost.toLocaleString()}`;
+        $('statTopModel').textContent = s.top_models.length ? s.top_models[0].model : '-';
+    } catch (e) { /* no data */ }
+}
+
+async function loadUsage() {
+    try {
+        const res = await fetch('/api/usage?limit=50');
+        const records = await res.json();
+        if (!records.length) return;
+        $('tableEmpty').classList.add('hidden');
+        $('usageTable').innerHTML = records.map(r =>
+            `<tr class="border-b border-slate-800"><td class="py-2 pr-4">${r.date}</td><td class="pr-4">${r.model}</td><td class="pr-4">${r.provider}</td><td class="pr-4 text-right">${(r.input_tokens+r.output_tokens).toLocaleString()}</td><td class="pr-4 text-right">$${r.cost.toFixed(2)}</td><td class="text-right">${r.requests_count}</td></tr>`
+        ).join('');
+    } catch (e) { /* no data */ }
+}
+
+function renderChart(historical, forecast, budget) {
+    $('chartEmpty').classList.add('hidden');
+    const traces = [
+        { x: historical.map(h=>h.date), y: historical.map(h=>h.cost), type: 'scatter', mode: 'lines', name: 'Actual', line: { color: '#38bdf8', width: 2 } },
+        { x: forecast.map(f=>f.date), y: forecast.map(f=>f.predicted_cost), type: 'scatter', mode: 'lines', name: 'Forecast', line: { color: '#f97316', dash: 'dash', width: 2 } },
+        { x: [...forecast.map(f=>f.date), ...forecast.slice().reverse().map(f=>f.date)],
+          y: [...forecast.map(f=>f.upper_bound), ...forecast.slice().reverse().map(f=>f.lower_bound)],
+          fill: 'toself', fillcolor: 'rgba(249,115,22,0.1)', line: { color: 'transparent' }, type: 'scatter', name: 'Confidence', showlegend: false },
+    ];
+    if (budget > 0) {
+        const daily = budget / 30;
+        const allDates = [...historical.map(h=>h.date), ...forecast.map(f=>f.date)];
+        traces.push({ x: [allDates[0], allDates[allDates.length-1]], y: [daily, daily], type: 'scatter', mode: 'lines', name: `Budget ($${budget}/mo)`, line: { color: '#ef4444', dash: 'dot', width: 1.5 } });
+    }
+    Plotly.newPlot('chart', traces, {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        font: { color: '#94a3b8', size: 11 },
+        xaxis: { gridcolor: '#1e293b', linecolor: '#334155' },
+        yaxis: { gridcolor: '#1e293b', linecolor: '#334155', title: 'Daily Cost ($)', tickprefix: '$' },
+        legend: { orientation: 'h', y: -0.15 },
+        margin: { t: 20, r: 20, b: 60, l: 60 },
+    }, { responsive: true, displayModeBar: false });
+}
+
+function renderAlert(alert) {
+    const badge = $('alertBadge');
+    badge.classList.remove('hidden', 'badge-green', 'badge-yellow', 'badge-red');
+    badge.classList.add(alert.status === 'critical' ? 'badge-red' : alert.status === 'warning' ? 'badge-yellow' : 'badge-green');
+    badge.textContent = alert.status.toUpperCase();
+    $('statProjected').textContent = `$${alert.projected_monthly_cost.toLocaleString()}`;
+    $('statDays').textContent = alert.days_until_exceeded ? `${alert.days_until_exceeded}d` : 'N/A';
+    if (alert.budget > 0) $('budgetInput').value = alert.budget;
+}
+
+function loadAll() { loadForecast(); loadSummary(); loadUsage(); }
+loadAll();
+</script>
+</body>
+</html>

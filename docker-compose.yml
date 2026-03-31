@@ -1,0 +1,12 @@
+services:
+  token-forecast:
+    build: .
+    ports:
+      - "${TOKEN_FORECAST_PORT:-8000}:8000"
+    environment:
+      - TOKEN_FORECAST_BUDGET_MONTHLY=${TOKEN_FORECAST_BUDGET_MONTHLY:-5000}
+    volumes:
+      - forecast-data:/app/data
+
+volumes:
+  forecast-data:
