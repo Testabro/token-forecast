@@ -1,5 +1,5 @@
 import logging
-from datetime import date, timedelta
+from datetime import date
 
 import pandas as pd
 
@@ -104,18 +104,21 @@ def check_budget(
                 days_until = i + 1
                 break
 
+    proj = f"${projected_total:,.0f}"
+    budg = f"${monthly_budget:,.0f}"
+
     if ratio >= 0.95:
         status = "critical"
         if days_until:
-            message = f"Budget will be exceeded in ~{days_until} days. Projected: ${projected_total:,.0f} / ${monthly_budget:,.0f}"
+            message = f"Budget will be exceeded in ~{days_until} days. Projected: {proj} / {budg}"
         else:
-            message = f"Projected spend ${projected_total:,.0f} is {ratio:.0%} of ${monthly_budget:,.0f} budget"
+            message = f"Projected spend {proj} is {ratio:.0%} of {budg} budget"
     elif ratio >= 0.80:
         status = "warning"
-        message = f"Trending high. Projected: ${projected_total:,.0f} / ${monthly_budget:,.0f} ({ratio:.0%})"
+        message = f"Trending high. Projected: {proj} / {budg} ({ratio:.0%})"
     else:
         status = "on_track"
-        message = f"On track. Projected: ${projected_total:,.0f} / ${monthly_budget:,.0f} ({ratio:.0%})"
+        message = f"On track. Projected: {proj} / {budg} ({ratio:.0%})"
 
     return BudgetAlert(
         status=status,

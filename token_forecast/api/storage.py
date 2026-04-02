@@ -41,7 +41,9 @@ async def store_records(records: list[UsageRecord]) -> int:
     db = await _get_db()
     try:
         await db.executemany(
-            """INSERT INTO usage_records (date, model, provider, input_tokens, output_tokens, cost, requests_count, tag)
+            """INSERT INTO usage_records
+               (date, model, provider, input_tokens, output_tokens,
+                cost, requests_count, tag)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (

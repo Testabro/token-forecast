@@ -1,7 +1,7 @@
 import pytest
 
 from token_forecast.forecast.engine import check_budget, forecast_cost
-from token_forecast.models import BudgetAlert, ForecastResult
+from token_forecast.models import ForecastResult
 
 
 class TestForecastCost:

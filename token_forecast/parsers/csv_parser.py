@@ -61,7 +61,9 @@ def parse_csv(content: str | bytes) -> list[UsageRecord]:
     has_cost = "cost" in col_map
     has_tokens = "input_tokens" in col_map or "output_tokens" in col_map
     if not has_cost and not has_tokens:
-        raise ValueError("CSV must have a 'cost' column or token columns (input_tokens, output_tokens)")
+        raise ValueError(
+            "CSV must have a 'cost' column or token columns (input_tokens, output_tokens)"
+        )
 
     records = []
     for row in reader:
