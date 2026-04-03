@@ -1,7 +1,9 @@
+from datetime import date, timedelta
+
 import pytest
 
 from token_forecast.forecast.engine import check_budget, forecast_cost
-from token_forecast.models import ForecastResult
+from token_forecast.models import ForecastResult, UsageRecord
 
 
 class TestForecastCost:
@@ -39,17 +41,20 @@ class TestCheckBudget:
         alert = check_budget(sample_records, forecast, monthly_budget=100000)
         assert alert.status == "on_track"
 
-    def test_critical_when_over_budget(self, sample_records):
+    def test_critical_when_over_budget(self):
+        # Use current-month records so check_budget sees actual spend
+        today = date.today()
+        records = [UsageRecord(date=today - timedelta(days=i), cost=100.0) for i in range(10)]
         forecast = [
             ForecastResult(
-                date=sample_records[-1].date,
+                date=today + timedelta(days=i),
                 predicted_cost=500.0,
                 lower_bound=400.0,
                 upper_bound=600.0,
             )
-            for _ in range(30)
+            for i in range(1, 21)
         ]
-        alert = check_budget(sample_records, forecast, monthly_budget=10)
+        alert = check_budget(records, forecast, monthly_budget=10)
         assert alert.status == "critical"
 
     def test_no_budget_returns_on_track(self, sample_records):
