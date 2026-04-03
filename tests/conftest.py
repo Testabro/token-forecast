@@ -49,7 +49,9 @@ def sample_csv_content() -> bytes:
     start = date(2025, 3, 1)
     for i in range(30):
         d = start + timedelta(days=i)
-        lines.append(f"{d},gpt-4o,openai,{50000+i*1000},{20000+i*500},{1.5+i*0.05:.2f},{30+i}")
+        lines.append(
+            f"{d},gpt-4o,openai,{50000 + i * 1000},{20000 + i * 500},{1.5 + i * 0.05:.2f},{30 + i}"
+        )
     return "\n".join(lines).encode("utf-8")
 
 

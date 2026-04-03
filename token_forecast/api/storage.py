@@ -117,9 +117,7 @@ async def set_setting(key: str, value: str) -> None:
 async def get_setting(key: str, default: str = "") -> str:
     db = await _get_db()
     try:
-        row = await db.execute_fetchall(
-            "SELECT value FROM settings WHERE key = ?", (key,)
-        )
+        row = await db.execute_fetchall("SELECT value FROM settings WHERE key = ?", (key,))
         return row[0]["value"] if row else default
     finally:
         await db.close()
